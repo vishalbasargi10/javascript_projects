@@ -1,0 +1,255 @@
+<!-- 1) getElementById
+2) classList
+3) addEventListener(click,functionname)
+4) appendChild
+5) removeChild
+6) createElement
+7) .value     
+8) localstorage
+9) querySelectorAll
+10) JSON.parse()---to convert the string into a JAvaScript object
+11) JSON.stringify()----convert js object into a string
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(to right, #83a4d4, #b6fbff);
+        }
+
+        .container {
+            text-align: center;
+            width: 300px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        input, button, select {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-top: 5px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .task-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .task-content span {
+            display: block;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        button.delete {
+            background-color: #ff4d4d;
+            width:50px;
+            color: white;
+            border: none;
+            padding: 2px 5px;  /* Reduced padding */
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            font-size: 12px;  /* Reduced font size */
+        }
+
+        button.delete:hover {
+            background-color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List</h1>
+        <input type="text" id="taskInput" placeholder="Add a new task">
+        <input type="date" id="taskDeadline">
+        <select id="taskCategory">
+            <option value="Work">Work</option>
+            <option value="Personal">Personal</option>
+            <option value="Other">Other</option>
+        </select>
+        <button id="addTaskButton">Add Task</button>
+        <input type="text" id="filterInput" placeholder="Filter tasks">
+        <ul id="taskList"></ul>
+    </div>
+
+    <script>
+        document.getElementById('addTaskButton').addEventListener('click', addTask);
+        document.getElementById('filterInput').addEventListener('input', filterTasks);
+        window.addEventListener('load', loadTasks);
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const taskDeadline = document.getElementById('taskDeadline');
+            const taskCategory = document.getElementById('taskCategory');
+            const taskText = taskInput.value.trim();
+            const deadlineText = taskDeadline.value;
+            const categoryText = taskCategory.value;
+
+            if (taskText === '') {
+                alert('Please enter a task');
+                return;
+            }
+
+            const taskList = document.getElementById('taskList');
+
+            const listItem = document.createElement('li');
+            const taskHeader = document.createElement('div');
+            taskHeader.classList.add('task-header');
+            const taskContent = document.createElement('div');
+            taskContent.classList.add('task-content');
+
+            const taskSpan = document.createElement('span');
+            taskSpan.textContent = `Task: ${taskText}`;
+            const deadlineSpan = document.createElement('span');
+            deadlineSpan.textContent = `Deadline: ${deadlineText}`;
+            const categorySpan = document.createElement('span');
+            categorySpan.textContent = `Category: ${categoryText}`;
+
+            taskContent.appendChild(taskSpan);
+            taskContent.appendChild(deadlineSpan);
+            taskContent.appendChild(categorySpan);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.classList.add('delete');
+            deleteButton.addEventListener('click', function() {
+                taskList.removeChild(listItem);
+                saveTasks();
+            });
+
+            taskHeader.appendChild(taskContent);
+            taskHeader.appendChild(deleteButton);
+            listItem.appendChild(taskHeader);
+            taskList.appendChild(listItem);
+
+            saveTasks();
+
+            taskInput.value = '';
+            taskDeadline.value = '';
+            taskCategory.value = 'Work';
+        }
+
+        function saveTasks() {
+            const taskList = document.getElementById('taskList');
+            const tasks = [];
+            taskList.querySelectorAll('li').forEach(item => {
+                tasks.push({
+                    text: item.querySelector('.task-content span:nth-child(1)').textContent.replace('Task: ', ''),
+                    deadline: item.querySelector('.task-content span:nth-child(2)').textContent.replace('Deadline: ', ''),
+                    category: item.querySelector('.task-content span:nth-child(3)').textContent.replace('Category: ', '')
+                });
+            });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function loadTasks() {
+            const storedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';  // Clear the task list first
+
+            storedTasks.forEach(task => {
+                const listItem = document.createElement('li');
+                const taskHeader = document.createElement('div');
+                taskHeader.classList.add('task-header');
+                const taskContent = document.createElement('div');
+                taskContent.classList.add('task-content');
+
+                const taskSpan = document.createElement('span');
+                taskSpan.textContent = `Task: ${task.text}`;
+                const deadlineSpan = document.createElement('span');
+                deadlineSpan.textContent = `Deadline: ${task.deadline}`;
+                const categorySpan = document.createElement('span');
+                categorySpan.textContent = `Category: ${task.category}`;
+
+                taskContent.appendChild(taskSpan);
+                taskContent.appendChild(deadlineSpan);
+                taskContent.appendChild(categorySpan);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.classList.add('delete');
+                deleteButton.addEventListener('click', function() {
+                    taskList.removeChild(listItem);
+                    saveTasks();
+                });
+
+                taskHeader.appendChild(taskContent);
+                taskHeader.appendChild(deleteButton);
+                listItem.appendChild(taskHeader);
+                taskList.appendChild(listItem);
+            });
+        }
+
+        function filterTasks() {
+            const filterInput = document.getElementById('filterInput').value.toLowerCase();
+            const taskList = document.getElementById('taskList');
+            taskList.querySelectorAll('li').forEach(item => {
+                const taskText = item.querySelector('.task-content span:nth-child(1)').textContent.toLowerCase();
+                if (taskText.includes(filterInput)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
+
+

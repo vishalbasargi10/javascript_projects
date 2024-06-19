@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #quiz-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        #question {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .btn {
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .correct {
+            background-color: green;
+        }
+        .incorrect {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+
+
+    <div id="quiz-container">
+        <div id="question-container">
+            <div id="question">Loading...</div>
+            <div id="answer-buttons" class="btn-container"></div>
+        </div>
+        <div id="controls">
+            <button id="next-btn" class="btn" style="display: none;">Next</button>
+            <div id="timer">Time: <span id="time-left">10</span> seconds</div>
+            <div id="score">Score: <span id="score-value">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://opentdb.com/api.php?amount=10&type=multiple';
+        const questionContainer = document.getElementById('question');
+        const answerButtonsElement = document.getElementById('answer-buttons');
+        const nextButton = document.getElementById('next-btn');
+        const timerElement = document.getElementById('time-left');
+        const scoreElement = document.getElementById('score-value');
+        
+        let shuffledQuestions, currentQuestionIndex;
+        let score = 0;
+        let timeLeft = 10;
+        let timer;
+        const MAX_RETRIES = 3;
+
+        nextButton.addEventListener('click', () => {
+            currentQuestionIndex++;
+            setNextQuestion();
+        });
+
+        async function fetchQuestions(retries = MAX_RETRIES) {
+            try {
+                console.log('Fetching questions from API...');
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                console.log('Questions fetched:', data.results);
+                return data.results;
+            } catch (error) {
+                console.error('Error fetching questions:', error);
+                if (retries > 0) {
+                    console.log(`Retrying... (${MAX_RETRIES - retries + 1})`);
+                    return fetchQuestions(retries - 1);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        async function startQuiz() {
+            try {
+                const questions = await fetchQuestions();
+                shuffledQuestions = questions.map((q) => {
+                    const incorrectAnswers = q.incorrect_answers.map(answer => decodeHTML(answer));
+                    const correctAnswer = decodeHTML(q.correct_answer);
+                    return {
+                        question: decodeHTML(q.question),
+                        answers: [correctAnswer, ...incorrectAnswers].sort(() => Math.random() - 0.5),
+                        correctAnswer: correctAnswer
+                    };
+                });
+                currentQuestionIndex = 0;
+                score = 0;
+                scoreElement.innerText = score;
+                setNextQuestion();
+            } catch (error) {
+                questionContainer.innerText = 'Failed to load questions. Please try again.';
+            }
+        }
+
+        function decodeHTML(html) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = html;
+            return txt.value;
+        }
+
+        function setNextQuestion() {
+            resetState();
+            showQuestion(shuffledQuestions[currentQuestionIndex]);
+            startTimer();
+        }
+
+        function showQuestion(question) {
+            questionContainer.innerText = question.question;
+            question.answers.forEach(answer => {
+                const button = document.createElement('button');
+                button.innerText = answer;
+                button.classList.add('btn');
+                if (answer === question.correctAnswer) {
+                    button.dataset.correct = true;
+                }
+                button.addEventListener('click', selectAnswer);
+                answerButtonsElement.appendChild(button);
+            });
+        }
+
+        function resetState() {
+            clearStatusClass(document.body);
+            nextButton.style.display = 'none';
+            while (answerButtonsElement.firstChild) {
+                answerButtonsElement.removeChild(answerButtonsElement.firstChild);
+            }
+            clearInterval(timer);
+            timeLeft = 10;
+            timerElement.innerText = timeLeft;
+        }
+
+        function selectAnswer(e) {
+            const selectedButton = e.target;
+            const correct = selectedButton.dataset.correct;
+            setStatusClass(document.body, correct);
+            if (correct) {
+                score++;
+                scoreElement.innerText = score;
+            }
+            Array.from(answerButtonsElement.children).forEach(button => {
+                setStatusClass(button, button.dataset.correct);
+            });
+            if (shuffledQuestions.length > currentQuestionIndex + 1) {
+                nextButton.style.display = 'block';
+            } else {
+                nextButton.innerText = 'Restart';
+                nextButton.style.display = 'block';
+                nextButton.addEventListener('click', startQuiz);
+            }
+            clearInterval(timer);
+        }
+
+        function setStatusClass(element, correct) {
+            clearStatusClass(element);
+            if (correct) {
+                element.classList.add('correct');
+            } else {
+                element.classList.add('incorrect');
+            }
+        }
+
+        function clearStatusClass(element) {
+            element.classList.remove('correct');
+            element.classList.remove('incorrect');
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                timerElement.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    selectAnswer({ target: { dataset: { correct: false } } });
+                }
+            }, 1000);
+        }
+
+        startQuiz();
+    </script>
+</body>
+</html>
